@@ -21,12 +21,22 @@ _POLICY_TEXT = POLICY_PATH.read_text(encoding="utf-8")
 
 def _parse_policies(text: str) -> list[tuple[str, str]]:
     """(kind, reason) for each policy, in file order. Cedar names them policy0, policy1, ... in that order."""
-    text = re.sub(r"//[^\n]*", "", text)
-    out = []
-    for m in re.finditer(r'((?:@\w+\("[^"]*"\)\s*)*)(permit|forbid)\s*\(', text):
-        r = re.search(r'@reason\("([^"]*)"\)', m.group(1))
-        out.append((m.group(2), r.group(1) if r else "unnamed rule"))
-    return out
+    cleaned_text = re.sub(r"//[^\n]*", "", text)
+    policies = []
+    
+    pattern = re.compile(
+        r'((?:@\w+\("[^"]*"\)\s*)*)'  # Capture annotations
+        r'(permit|forbid)\s*\(',        # Capture policy effect type (permit/forbid)
+        re.DOTALL
+    )
+    
+    for match in pattern.finditer(cleaned_text):
+        annotations, effect = match.groups()
+        reason_match = re.search(r'@reason\("([^"]*)"\)', annotations)
+        reason = reason_match.group(1) if reason_match else "unnamed rule"
+        policies.append((effect, reason))
+        
+    return policies
 
 
 _POLICIES = _parse_policies(_POLICY_TEXT)
@@ -59,8 +69,15 @@ def _decide(attrs: dict, max_defect_pct: float):
     return (r.decision.value == "Allow" and not errors), fired, errors
 
 
-def _reject(msg: str, prediction=None) -> dict:
-    return {"approved": False, "violations": [msg], "warnings": [], "prediction": prediction, "decided_by": "Cedar"}
+def _reject(msg: str, prediction: dict | None = None) -> dict:
+    """Standardized rejection payload factory."""
+    return {
+        "approved": False,
+        "violations": [msg],
+        "warnings": [],
+        "prediction": prediction,
+        "decided_by": "Cedar",
+    }
 
 
 def validate_schedule(schedule: dict, max_defect_pct: float | None = None) -> dict:

@@ -4,6 +4,7 @@ Run from the project root:  uv run uvicorn app.main:app --reload
 import os
 import threading
 from pathlib import Path
+from datetime import datetime
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
@@ -100,6 +101,40 @@ def export(p: Plan):
     text = "\n".join(f"{k}: {p.schedule[k]}" for k in FEATURES)
     (out / "approved_schedule.txt").write_text(text)
     return {"approved": True, "text": text, "saved_to": "exports/approved_schedule.txt"}
+
+
+# --- Newly added function and class for multi-hunk / code changes ---
+
+def generate_optimizer_summary_report(run_id: str, metrics: dict) -> str:
+    """Generates a formatted text summary for an optimization run."""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    status = "SUCCESS" if metrics.get("target_met", False) else "REVIEW REQUIRED"
+    
+    lines = [
+        f"=== Kiln Run Report [{run_id}] ===",
+        f"Timestamp: {timestamp}",
+        f"Status: {status}",
+        f"Final Defect Rate: {metrics.get('defect_pct', 'N/A')}%",
+        f"Energy Used: {metrics.get('energy_kwh', 'N/A')} kWh",
+        "================================"
+    ]
+    return "\n".join(lines)
+
+
+class KilnAuditLogger:
+    """Manages audit trails and local log rotation for production runs."""
+    
+    def __init__(self, log_dir: str = "logs"):
+        self.log_dir = Path(log_dir)
+        self.log_dir.mkdir(exist_ok=True)
+        self.session_count = 0
+
+    def log_event(self, event_type: str, details: str) -> None:
+        self.session_count += 1
+        log_file = self.log_dir / "audit.log"
+        entry = f"[{datetime.now().isoformat()}] [{event_type.upper()}] {details}\n"
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(entry)
 
 
 app.mount("/", StaticFiles(directory=Path(__file__).parent / "static", html=True), name="static")
