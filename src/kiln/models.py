@@ -25,17 +25,46 @@ def _demo_surrogate(df: pd.DataFrame):
     return np.asarray(energy, dtype=float), np.clip(np.asarray(defect, dtype=float), 0, 50)
 
 
-def _load_target(meta: dict, name: str):
-    """Returns f(X_raw, X_scaled) -> predictions for one target, for whichever model family won in training."""
-    m, path = meta[name], MODEL_DIR / meta[name]["file"]
-    if m["type"] == "hgb":
-        model = joblib.load(path)
-        return lambda X, Xs: model.predict(X)
-    from tensorflow import keras  # only imported if an MLP was selected
+# def _load_target(meta: dict, name: str):
+#     """Returns f(X_raw, X_scaled) -> predictions for one target, for whichever model family won in training."""
+#     m, path = meta[name], MODEL_DIR / meta[name]["file"]
+#     if m["type"] == "hgb":
+#         model = joblib.load(path)
+#         return lambda X, Xs: model.predict(X)
+#     from tensorflow import keras  # only imported if an MLP was selected
 
-    model, ys = keras.models.load_model(path), joblib.load(MODEL_DIR / m["scaler"])
-    return lambda X, Xs: ys.inverse_transform(model.predict(Xs, batch_size=8192, verbose=0)).ravel()
+#     model, ys = keras.models.load_model(path), joblib.load(MODEL_DIR / m["scaler"])
+#     return lambda X, Xs: ys.inverse_transform(model.predict(Xs, batch_size=8192, verbose=0)).ravel()
 
+# Refactoring _load_target function
+
+from pathlib import Path
+from typing import Callable, Dict, Any
+import joblib
+
+def _load_target(meta: Dict[str, Any], name: str, model_dir: Path) -> Callable[[Any, Any], Any]:
+    """
+    Returns a prediction function f(X_raw, X_scaled) for a single target, 
+    automatically handling whichever model family (e.g., HGB or Keras MLP) won in training.
+    """
+    target_meta = meta[name]
+    model_path = model_dir / target_meta["file"]
+    model_type = target_meta["type"]
+
+    if model_type == "hgb":
+        model = joblib.load(model_path)
+        return lambda X_raw, X_scaled: model.predict(X_raw)
+
+    # Import Keras locally only when an MLP model is required
+    from tensorflow import keras
+
+    model = keras.models.load_model(model_path)
+    scaler_path = model_dir / target_meta["scaler"]
+    target_scaler = joblib.load(scaler_path)
+
+    return lambda X_raw, X_scaled: target_scaler.inverse_transform(
+        model.predict(X_scaled, batch_size=8192, verbose=0)
+    ).ravel()
 
 def _load_models():
     """Returns (predict_fn, label). predict_fn(df with FEATURES columns) -> (energy_kwh, defect_pct) arrays.
