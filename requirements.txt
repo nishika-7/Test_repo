@@ -1,0 +1,17 @@
+numpy
+pandas
+ipykernel
+scikit-learn
+streamlit
+catboost
+langchain
+langchain_groq
+langchain_core
+python-dotenv
+fastapi
+uvicorn
+strands
+strands-agents
+joblib
+tensorflow
+keras

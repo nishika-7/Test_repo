@@ -1,0 +1,46 @@
+[project]
+name = "kiln-test"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "nishika-7", email = "nishika.j77@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "catboost>=1.2.10",
+    "cedarpy>=4.12.1",
+    "fastapi>=0.142.3",
+    "ipykernel>=7.4.0",
+    "joblib>=1.6.0",
+    "keras>=3.15.1",
+    "langchain>=1.4.3",
+    "langchain-classic>=1.0.8",
+    "langchain-core>=1.6.7",
+    "langchain-groq>=1.1.3",
+    "numpy>=2.4.6",
+    "pandas>=3.0.6",
+    "python-dotenv>=1.2.4",
+    "scikit-learn>=1.9.1",
+    "strands>=0.1.0",
+    "strands-agents[ollama,openai]>=1.59.0",
+    "streamlit>=1.65.0",
+    "tensorflow>=2.21.0",
+    "uvicorn>=0.54.0",
+]
+
+[project.scripts]
+kiln-test = "kiln_test:main"
+kiln-agent = "kiln.agent:main"  
+
+[build-system]
+requires = ["uv_build>=0.12.19,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "kiln"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]

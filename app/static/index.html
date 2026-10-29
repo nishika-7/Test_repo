@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kiln optimizer</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#ECEFF1;--panel:#F6F7F8;--ink:#18222D;--mute:#5B6773;--line:#D3DAE0;--glaze:#137A72;--heat:#E0702B;--warn:#B3321E;--band:rgba(19,122,114,.08);
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12171C;--panel:#1A2128;--ink:#E8EDF1;--mute:#93A0AC;--line:#2B353E;--glaze:#3FC1B5;--heat:#F08A3E;--warn:#F26B55;--band:rgba(63,193,181,.09)}}
+:root[data-theme="dark"]{--bg:#12171C;--panel:#1A2128;--ink:#E8EDF1;--mute:#93A0AC;--line:#2B353E;--glaze:#3FC1B5;--heat:#F08A3E;--warn:#F26B55;--band:rgba(63,193,181,.09)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.5 "Instrument Sans",system-ui,sans-serif}
+h1,h2{font-family:"Bricolage Grotesque","Instrument Sans",system-ui,sans-serif;margin:0;font-weight:700;letter-spacing:-.01em}
+.app{max-width:1040px;margin:0 auto;min-height:100vh}
+aside{background:var(--panel);border-right:1px solid var(--line);padding:24px 22px;display:flex;flex-direction:column;gap:22px}
+aside h1{font-size:22px}
+aside p{margin:2px 0 0;color:var(--mute);font-size:13px}
+.grp{font:600 14px "Instrument Sans",sans-serif;color:var(--glaze);margin-bottom:-10px}
+.field label,.field .lab{display:flex;justify-content:space-between;font-weight:600;font-size:13px;margin-bottom:8px}
+.field output{color:var(--mute);font-weight:500}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{all:unset;cursor:pointer;text-align:center;padding:8px 2px;font-size:13px;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg);font-weight:600}
+.seg button:focus-visible,input:focus-visible,.btn:focus-visible{outline:2px solid var(--glaze);outline-offset:2px}
+input[type=range]{width:100%;accent-color:var(--glaze)}
+.ends{display:flex;justify-content:space-between;color:var(--mute);font-size:12px}
+.note{font-size:12px;color:var(--mute);border-top:1px solid var(--line);padding-top:14px;margin-top:auto}
+main{padding:28px clamp(18px,3vw,40px);display:flex;flex-direction:column;gap:26px;min-width:0}
+.hero h2{font-size:clamp(24px,3.2vw,36px);line-height:1.15;max-width:24em}
+.hero p{margin:8px 0 0;color:var(--mute);max-width:46em}
+.warn{color:var(--warn);font-weight:600}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.stat{padding:14px 16px 14px 0}
+.stat+.stat{padding-left:16px;border-left:1px solid var(--line)}
+.stat b{display:block;font:700 24px/1.2 "Bricolage Grotesque",sans-serif}
+.stat span{color:var(--mute);font-size:13px}
+.stat i{font-style:normal;color:var(--glaze);font-size:13px;font-weight:600}
+.chart h3,.two h3{font:600 14px "Instrument Sans";margin:0 0 8px}
+.legend{display:flex;gap:18px;color:var(--mute);font-size:13px;margin-bottom:6px;flex-wrap:wrap}
+.legend span:before{content:"";display:inline-block;width:18px;height:0;border-top:3px solid var(--glaze);vertical-align:middle;margin-right:6px}
+.legend .base:before{border-top:2px dashed var(--mute)}
+svg{display:block;width:100%;height:auto;overflow:visible}
+svg text{fill:var(--mute);font:12px "Instrument Sans",sans-serif}
+svg .grid{stroke:var(--line);stroke-width:1}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-weight:500;color:var(--mute);text-align:left;padding:6px 0;border-bottom:1px solid var(--line)}
+td{padding:9px 0;border-bottom:1px solid var(--line)}
+td:nth-child(n+2),th:nth-child(n+2){text-align:right}
+td:last-child{color:var(--glaze);font-weight:600}
+.models{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.chip{border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px}
+.chip:before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--heat);margin-right:8px}
+.actions{display:flex;gap:10px;margin-top:16px}
+.btn{all:unset;cursor:pointer;padding:9px 16px;border-radius:8px;font-weight:600;font-size:14px;background:var(--ink);color:var(--bg)}
+.btn.alt{background:none;color:var(--ink);border:1px solid var(--line)}
+.toast{font-size:13px;color:var(--glaze);align-self:center;min-height:1em}
+@media(max-width:900px){.app{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line)}.two{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}.stat:nth-child(3){border-left:0;padding-left:0}.stat:nth-child(n+3){border-top:1px solid var(--line)}}
+@media(prefers-reduced-motion:no-preference){.curve{stroke-dasharray:2000;stroke-dashoffset:2000;animation:draw 1.4s ease-out forwards}@keyframes draw{to{stroke-dashoffset:0}}}
+.seg button{text-transform:capitalize}
+.ask form{display:flex;gap:10px}.ask input{flex:1;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font:inherit}
+.trace{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.trace:empty{display:none}
+#reply{margin:8px 0 0;color:var(--mute);font-size:14px;white-space:pre-wrap}
+.badge{padding:8px 12px;border-radius:8px;font-size:13px;margin-bottom:10px;border:1px solid var(--line)}.badge.ok{color:var(--glaze)}.badge.bad{color:var(--warn)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.top{padding:28px 0 6px}.top h1{font-size:26px;margin:0}.top p{margin:6px 0 0;color:var(--mute)}
+.examples,.understood{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.understood:empty{display:none}
+.top{padding:44px 0 10px;background:radial-gradient(700px 220px at 85% -40px,color-mix(in srgb,var(--heat) 16%,transparent),transparent)}
+.top .eyebrow{margin:0;color:var(--glaze);font-weight:600;font-size:13px;letter-spacing:.07em;text-transform:uppercase}
+.top h1{font-size:clamp(28px,4.4vw,44px);line-height:1.08;margin:10px 0 14px;max-width:20ch}
+.top .lede{max-width:64ch;color:var(--mute);font-size:16px;margin:0}
+.top.compact{padding:22px 0 0;background:none}.top.compact h1{font-size:22px;margin:0;max-width:none}.top.compact .lede,.top.compact .eyebrow{display:none}
+.ask input{font-size:17px;padding:14px 16px}
+#reply:not(:empty){margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);font-size:14px}
+.sec{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:30px 0 10px;font-weight:600}
+.cards,.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0;padding:0;list-style:none}
+.card{all:unset;box-sizing:border-box;cursor:pointer;display:block;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.card:hover{border-color:var(--glaze)}.card:focus-visible{outline:2px solid var(--glaze);outline-offset:2px}
+.card b{display:block;font-size:15px}.card span,.steps span{display:block;margin-top:4px;color:var(--mute);font-size:13px}
+.steps li{padding:14px 16px;border-left:3px solid var(--glaze);background:var(--panel);border-radius:0 10px 10px 0}.steps b{display:block}.steps span{font-size:14px}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}th{color:var(--mute);font-weight:600;font-size:12px}
+.bars{display:grid;gap:14px;margin-top:6px}.bar{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;align-items:start;font-size:13px}
+.bar i{display:block;height:10px;border-radius:5px;margin-top:4px}.bar .std{background:var(--mute);opacity:.5}.bar .opt{background:var(--glaze)}.bar small{display:block;color:var(--mute);margin:2px 0 4px}
+@media(max-width:700px){.cards,.steps{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+<main>
+  <header class="top" id="top"><p class="eyebrow">Kiln firing planner</p>
+    <h1>Fire the same kiln with less energy and fewer cracked pots.</h1>
+    <p class="lede">Describe the load in a sentence. An AI agent plans the firing, an energy model and a defect model score it, and a safety policy has to approve it before you can export.</p></header>
+  <section class="ask"><form id="askf"><input id="msg" aria-label="Describe the firing" autocomplete="off" placeholder="e.g. 400 kg stoneware, 60 pieces, 3% moisture, 30 °C ambient, defects under 5%"><button class="btn" type="submit">Plan firing</button></form>
+    <div class="understood" id="understood"></div><div class="trace" id="trace"></div><p id="reply" role="status"></p></section>
+  <section id="landing">
+    <h2 class="sec">Try an example</h2>
+    <div class="cards" id="examples"></div>
+    <h2 class="sec">How it works</h2>
+    <ol class="steps">
+      <li><b>1. Describe the job</b><span>Clay body, load weight, number of pieces, moisture, room temperature and the defect rate you can accept.</span></li>
+      <li><b>2. The agent optimizes</b><span>It searches thousands of schedules and keeps the lowest-energy one that meets your defect target.</span></li>
+      <li><b>3. Safety check, then you approve</b><span>A Cedar policy checks every limit. Only an approved schedule can be exported.</span></li>
+    </ol>
+  </section>
+  <div id="results" hidden>
+  <section class="hero"><h2 id="head"></h2><p id="sub"></p></section>
+  <section class="stats" id="stats"></section>
+  <section class="chart">
+    <h3>Firing curve</h3>
+    <div class="legend"><span>Optimized plan</span><span class="base">Standard firing</span></div>
+    <svg id="curve" viewBox="0 0 760 330" role="img" aria-label="Temperature against time for the current and optimized firing schedules"></svg>
+  </section>
+  <section class="two">
+    <div><h3>Firing schedule</h3>
+      <div id="badge" class="badge"></div><table id="stages"></table>
+      <div class="actions"><button class="btn" id="exp" disabled>Approve and export</button><span class="toast" id="toast" role="status"></span></div></div>
+    <div><h3>Against a standard firing</h3><div class="bars" id="bars"></div>
+      <h3 style="margin-top:26px">Energy against defect rate, for every schedule tested</h3>
+      <svg id="pareto" viewBox="0 0 360 250" role="img" aria-label="Trade-off between energy use and defect rate"></svg>
+      <div class="models"><span class="chip">Energy model</span><span class="chip">Defect model</span><span class="chip">Optimizer</span></div></div>
+  </section>
+  <section class="chart"><h3>All settings, optimized against standard</h3><table id="sched"></table></section>
+  <p class="note">Energy and defect numbers come from the trained models through the API. Cost assumes ₹8 per kWh.</p>
+  </div>
+</main>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const inr=n=>"₹"+Math.round(n).toLocaleString("en-IN");
+const post=(u,b)=>fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}).then(r=>r.json().then(j=>({ok:r.ok,j})));
+const EX=[{t:"400 kg stoneware, 60 pieces, 3% moisture, 30 °C ambient, defects under 5%",h:"Stoneware, 400 kg",s:"60 pieces · 3% moisture · 30 °C · defects under 5%"},{t:"250 kg porcelain, 40 pieces, 2% moisture, 28 °C room, defects under 3%",h:"Porcelain, 250 kg",s:"40 pieces · 2% moisture · 28 °C · defects under 3%"},{t:"600 kg earthenware, 120 pieces, 6% moisture, 35 °C ambient, defects under 6%",h:"Earthenware, 600 kg",s:"120 pieces · 6% moisture · 35 °C · defects under 6%"}];
+let cur=null,last=null;
+const chips=i=>i?[i.clay_body,i.load_kg+" kg",i.num_pieces+" pieces",i.moisture_pct+"% moisture",i.ambient_temp+" °C ambient","defects up to "+i.max_defect_pct+"%"].map(x=>`<span class="chip">${esc(x)}</span>`).join(""):"";
+function show(d){
+  if(d.error){$("reply").textContent=d.error;return}
+  $("trace").innerHTML=(d.trace||[]).map(t=>`<span class="chip">${esc(t.tool)} ${t.ok?"✓":"✗"}</span>`).join("")+(d.mode==="scripted"?'<span class="chip">scripted demo, no LLM</span>':"");
+  $("reply").textContent=d.reply||"";
+  if(d.result){cur=d.result;last=d.inputs;$("understood").innerHTML=chips(d.inputs);$("results").hidden=false;$("landing").hidden=true;$("top").classList.add("compact");$("msg").placeholder="Ask a follow-up, e.g. defects under 3% or make it porcelain";render(d.result,d.chart||{},d.inputs||{})}
+}
+function stages(s){const a=(573-s.ambient_temp)/s.ramp_0_573,b=a+(s.peak_temp-573)/s.ramp_573_peak,c=b+s.soak_minutes/60,e=c+(s.peak_temp-100)/s.cooling_rate;
+  return{T:e,p:[[0,s.ambient_temp],[a,573],[b,s.peak_temp],[c,s.peak_temp],[e,100]]}}
+const path=(pts,X,Y)=>pts.map((p,i)=>(i?"L":"M")+X(p[0]).toFixed(1)+" "+Y(p[1]).toFixed(1)).join(" ");
+function render(r,ch,inp0){
+  const inp={...inp0,max_defect_pct:+(inp0.max_defect_pct??5),load_kg:+inp0.load_kg};
+  const s=r.recommended_schedule,bs=r.baseline_schedule,P=r.predicted,B=r.baseline_prediction,V=r.validation,dE=B.energy_kwh-P.energy_kwh,so=stages(s),sb=stages(bs);
+  $("head").textContent=`Energy ${dE>=0?"down":"up"} ${Math.abs(r.energy_saving_vs_baseline_pct)}% against a standard firing, at ${P.defect_rate_pct}% predicted defects.`;
+  $("sub").innerHTML=r.target_met?`For ${inp.load_kg} kg of ${esc(inp.clay_body)}, fired to ${s.peak_temp} °C. The 573 °C line marks quartz inversion, where fast heating can crack ware.`:`<span class="warn">No tested schedule reaches ${inp.max_defect_pct.toFixed(1)}% defects.</span> Showing the lowest-defect plan found.`;
+  $("stats").innerHTML=[[P.energy_kwh+" kWh","Energy used",(dE>=0?"down ":"up ")+Math.abs(dE/B.energy_kwh*100).toFixed(1)+"% from standard"],[P.defect_rate_pct+"%","Predicted defect rate","standard: "+B.defect_rate_pct+"%"],[so.T.toFixed(1)+" h","Total firing time","standard: "+sb.T.toFixed(1)+" h"],[inr(dE*8),"Energy cost saved","per firing"]].map(x=>`<div class="stat"><b>${x[0]}</b><span>${x[1]}</span><br><i>${x[2]}</i></div>`).join("");
+  const W=760,H=330,L=46,R=14,T=14,BM=32,tmax=Math.ceil(Math.max(so.T,sb.T)+.5),ymax=1400,pk=s.peak_temp,X=t=>L+t/tmax*(W-L-R),Y=v=>T+(1-v/ymax)*(H-T-BM);
+  let g=`<defs><linearGradient id="hg" x1="0" y1="${Y(pk)}" x2="0" y2="${Y(0)}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="var(--heat)" stop-opacity=".45"/><stop offset="1" stop-color="var(--heat)" stop-opacity=".02"/></linearGradient></defs>`;
+  for(let v=0;v<=ymax;v+=200)g+=`<line class="grid" x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${L-8}" y="${Y(v)+4}" text-anchor="end">${v}</text>`;
+  for(let t=0;t<=tmax;t+=2)g+=`<text x="${X(t)}" y="${H-10}" text-anchor="middle">${t} h</text>`;
+  so.p.slice(0,-1).forEach((q,i)=>{const x0=X(q[0]),x1=X(so.p[i+1][0]);g+=`<rect x="${x0}" y="${T}" width="${x1-x0}" height="${H-T-BM}" fill="var(--glaze)" opacity="${i%2?0:.06}"/><text x="${(x0+x1)/2}" y="${T+14}" text-anchor="middle" font-weight="600">${i+1}</text>`});
+  g+=`<line x1="${L}" x2="${W-R}" y1="${Y(573)}" y2="${Y(573)}" stroke="var(--heat)" stroke-dasharray="4 4"/><text x="${L+8}" y="${Y(573)-6}">Quartz inversion, 573 °C</text>`;
+  g+=`<path d="${path(so.p,X,Y)} L${X(so.T)} ${Y(0)} L${X(0)} ${Y(0)}Z" fill="url(#hg)"/><path d="${path(sb.p,X,Y)}" fill="none" stroke="var(--mute)" stroke-width="2" stroke-dasharray="6 5"/><path class="curve" d="${path(so.p,X,Y)}" fill="none" stroke="var(--glaze)" stroke-width="3.5" stroke-linejoin="round"/><text x="${X(so.p[2][0])+6}" y="${Y(pk)-8}">Peak ${pk} °C, soak ${Math.round(s.soak_minutes)} min</text>`;
+  $("curve").innerHTML=g;
+  const pw=360,ph=250,pl=44,pr=10,pt=10,pb=34,tp=ch.tested||[],fr=ch.front||[],dy1=Math.max(inp.max_defect_pct*3,B.defect_rate_pct*1.2),ok=q=>q[1]<=dy1;
+  const es=tp.map(q=>q[0]).concat(B.energy_kwh,P.energy_kwh),ex0=Math.min(...es),ex1=Math.max(...es),PX=e=>pl+(e-ex0)/(ex1-ex0||1)*(pw-pl-pr),PY=d=>pt+(1-d/dy1)*(ph-pt-pb);
+  let p=`<line x1="${pl}" x2="${pw-pr}" y1="${PY(inp.max_defect_pct)}" y2="${PY(inp.max_defect_pct)}" stroke="var(--warn)" stroke-dasharray="4 4"/><text x="${pw-pr}" y="${PY(inp.max_defect_pct)-5}" text-anchor="end">Your limit</text>`;
+  for(let v=0;v<=dy1;v+=Math.max(1,Math.round(dy1/5)))p+=`<line class="grid" x1="${pl}" x2="${pw-pr}" y1="${PY(v)}" y2="${PY(v)}"/><text x="${pl-6}" y="${PY(v)+4}" text-anchor="end">${v}%</text>`;
+  tp.filter(ok).forEach(q=>p+=`<circle cx="${PX(q[0]).toFixed(1)}" cy="${PY(q[1]).toFixed(1)}" r="2" fill="var(--mute)" opacity=".35"/>`);
+  p+=`<path d="${path(fr.filter(ok),PX,PY)}" fill="none" stroke="var(--glaze)" stroke-width="2"/><circle cx="${PX(B.energy_kwh)}" cy="${PY(B.defect_rate_pct)}" r="6" fill="none" stroke="var(--ink)" stroke-width="2"/><text x="${PX(B.energy_kwh)-10}" y="${PY(B.defect_rate_pct)-10}" text-anchor="end">Standard</text>`;
+  p+=`<circle cx="${PX(P.energy_kwh)}" cy="${PY(P.defect_rate_pct)}" r="7" fill="var(--heat)" stroke="var(--bg)" stroke-width="2"/><text x="${PX(P.energy_kwh)+12}" y="${PY(P.defect_rate_pct)+4}">This plan</text><text x="${(pl+pw-pr)/2}" y="${ph-6}" text-anchor="middle">Energy per firing (kWh)</text>`;
+  $("pareto").innerHTML=p;
+  const rows=[["Peak temperature","peak_temp"," °C"],["Soak","soak_minutes"," min"],["Heat to 573 °C","ramp_0_573"," °C/h"],["Heat 573 °C to peak","ramp_573_peak"," °C/h"],["Cooling","cooling_rate"," °C/h"]];
+  $("sched").innerHTML=`<tr><th>Stage</th><th>Standard</th><th>Optimized</th></tr>`+rows.map(([n,k,u])=>`<tr><td>${n}</td><td>${bs[k]}${u}</td><td>${s[k]}${u}</td></tr>`).join("");
+  const hm=x=>{const m=Math.round(x*60);return Math.floor(m/60)+"h "+String(m%60).padStart(2,"0")+"m"};
+  const st=[["Heat to quartz inversion",so.p[0][1],573,s.ramp_0_573+" °C/h"],["Heat to peak",573,s.peak_temp,s.ramp_573_peak+" °C/h"],["Soak at peak",s.peak_temp,s.peak_temp,Math.round(s.soak_minutes)+" min hold"],["Cool down",s.peak_temp,100,s.cooling_rate+" °C/h"]];
+  $("stages").innerHTML=`<tr><th>#</th><th>Stage</th><th>Temperature</th><th>Rate</th><th>Duration</th><th>Clock</th></tr>`+st.map((r,i)=>`<tr><td>${i+1}</td><td>${r[0]}</td><td>${r[1]===r[2]?Math.round(r[1])+" °C":Math.round(r[1])+" → "+Math.round(r[2])+" °C"}</td><td>${r[3]}</td><td>${hm(so.p[i+1][0]-so.p[i][0])}</td><td>${hm(so.p[i][0])} – ${hm(so.p[i+1][0])}</td></tr>`).join("")+`<tr><td></td><td><b>Total</b></td><td></td><td></td><td><b>${hm(so.T)}</b></td><td></td></tr>`;
+  const bar=(l,a,b,u)=>{const m=Math.max(a,b)||1;return `<div class="bar"><span>${l}</span><div><i class="std" style="width:${a/m*100}%"></i><small>Standard ${a}${u}</small><i class="opt" style="width:${b/m*100}%"></i><small>Optimized ${b}${u}</small></div></div>`};
+  $("bars").innerHTML=bar("Energy",B.energy_kwh,P.energy_kwh," kWh")+bar("Defect rate",B.defect_rate_pct,P.defect_rate_pct,"%")+bar("Firing time",+sb.T.toFixed(1),+so.T.toFixed(1)," h");
+  $("badge").className="badge "+(V.approved?"ok":"bad");
+  $("badge").textContent=(V.approved?"Approved by the Cedar safety policy. ":"Rejected: "+V.violations.join("; ")+". ")+V.warnings.join(" ");
+  $("exp").disabled=!V.approved;
+}
+async function ask(m){
+  $("reply").textContent="Agent is working…";$("trace").innerHTML="";
+  const{j}=await post("/api/agent",{message:m,prev:last});show(j)
+}
+$("askf").onsubmit=e=>{e.preventDefault();const m=$("msg").value.trim();if(m)ask(m)};
+$("examples").innerHTML=EX.map((x,i)=>`<button type="button" class="card" data-i="${i}"><b>${esc(x.h)}</b><span>${esc(x.s)}</span></button>`).join("");
+$("examples").onclick=e=>{const b=e.target.closest("button");if(!b)return;const t=EX[b.dataset.i].t;$("msg").value=t;ask(t)};
+$("exp").onclick=async()=>{const{ok,j}=await post("/api/export",{schedule:cur.recommended_schedule,max_defect_pct:+((last&&last.max_defect_pct)||5)});$("toast").textContent=ok?"Approved and saved to "+j.saved_to:"Blocked: "+(j.violations||[]).join("; ");setTimeout(()=>$("toast").textContent="",4000)};
+</script>
+</body>
+</html>

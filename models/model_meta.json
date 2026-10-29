@@ -1,0 +1,18 @@
+{
+  "energy": {
+    "type": "hgb",
+    "file": "energy.joblib",
+    "scaler": null,
+    "val_mae": 39.6333,
+    "test_mae": 39.8148,
+    "test_r2": 0.9879
+  },
+  "defect": {
+    "type": "mlp",
+    "file": "defect.keras",
+    "scaler": "scaler_defect.joblib",
+    "val_mae": 0.5056,
+    "test_mae": 0.5096,
+    "test_r2": 0.9667
+  }
+}
